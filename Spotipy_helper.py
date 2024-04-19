@@ -1,57 +1,104 @@
-import os 
-from flask import Flask, session, url_for,redirect, request
-
+import os
+from flask import Flask, session, url_for, redirect, request, jsonify
+import logging
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 from spotipy.cache_handler import FlaskSessionCacheHandler
 
 
-app = Flask(__name__) #initialize the flask app
+artist_dir = 'artist_names'
+
+
+if not os.path.exists(artist_dir):
+    os.makedirs(artist_dir)
+
+# Initialize Flask app
+app = Flask(__name__)
 app.config['SECRET_KEY'] = 'a_static_secret_key'
 
-client_id = '5f83f8e7bebf4896a37737a50d9ef4b5' #found from spotify api 
-client_secret = 'c026360848cd451793486a8707591140'#found from spotify api 
-redirect_url = 'http://localhost:5000/callback' 
-scope = 'playlist-read-private' #must be changed to accomodate project scope dummy for now. Use comma to use more than one scope
+# Spotify API credentials
+client_id = '5f83f8e7bebf4896a37737a50d9ef4b5'
+client_secret = 'c026360848cd451793486a8707591140'
+redirect_url = 'http://localhost:5001/callback'
+scope = "playlist-read-private,playlist-read-collaborative,user-top-read"
 
 
-
-
-cache_handler = FlaskSessionCacheHandler(session) # Storing acccess token of Spotipy in Flask session
-sp_ouath = SpotifyOAuth(
+# Setup Spotify OAuth handler
+cache_handler = FlaskSessionCacheHandler(session)
+sp_oauth = SpotifyOAuth(
     client_id=client_id,
     client_secret=client_secret,
     redirect_uri=redirect_url,
-    scope= scope,
-    cache_handler= cache_handler,
+    scope=scope,
+    cache_handler=cache_handler,
     show_dialog=True
- ) #used for authenitcating with spotify API 
+)
 
-sp = Spotify(auth_manager=sp_ouath)
+# Initialize Spotify client
+sp = Spotify(auth_manager=sp_oauth)
 
 @app.route('/')
 def home():
-    if not sp_ouath.validate_token(cache_handler.get_cached_token()):
-        auth_url = sp_ouath.get_authorize_url()
+    if not sp_oauth.validate_token(cache_handler.get_cached_token()):
+        auth_url = sp_oauth.get_authorize_url()
         return redirect(auth_url)
-    return redirect(url_for('get_playlists'))
+    global sp
+    sp = Spotify(auth_manager=sp_oauth)
+    return redirect(url_for('select_genre'))
 
 @app.route('/callback')
 def callback():
-    sp_ouath.get_access_token(request.args['code'])  # Properly exchange the code for a token
-    return redirect(url_for('get_playlists'))
-     
-@app.route('/get_playlists')
-def get_playlists():
-    if not sp_ouath.validate_token(cache_handler.get_cached_token()):
-        auth_url = sp_ouath.get_authorize_url()
-        return redirect(auth_url)
-    
-    playlists = sp.current_user_playlists()
-    playlist_info = [(pl['name'], pl['external_urls']['spotify']) for pl in playlists['items']]
-    playlists_html = '<br>'.join([f'{name} : {url}' for name, url in playlist_info])
-    return playlists_html
-#code used to run the flask application locally 
+    sp_oauth.get_access_token(request.args['code'])  # Properly exchange the code for a token
+    return redirect(url_for('select_genre'))
+
+def get_available_genre_seeds():
+    try:
+        genre_seeds = sp.recommendation_genre_seeds()
+        return genre_seeds['genres'] 
+    except Exception as e:
+        logging.error(f"Failed to fetch genre seeds: {str(e)}")
+        return []
+
+
+@app.route('/select_genre')
+def select_genre():
+    return '''
+    <h1>Select a Genre</h1>
+    <ul>
+        <li><a href="/genre_recommendations/hip-hop">Hip Hop</a></li>
+        <li><a href="/genre_recommendations/party">Party</a></li>
+        <li><a href="/genre_recommendations/k-pop">Kpop</a></li>
+        <li><a href="/genre_recommendations/jazz">Jazz</a></li>
+        <li><a href="/genre_recommendations/classical">Classical</a></li>
+    </ul>
+    '''
+
+@app.route('/genre_recommendations/<genre_name>')
+def get_genre_recommendations(genre_name):
+    if not sp:
+        return "Spotify client not initialized. Please authenticate first.", 403
+
+    try:
+        results = sp.recommendations(seed_genres=[genre_name], limit=100)
+        tracks_info = [(track['name'], track['artists'][0]['name'], track['popularity']) for track in results['tracks']]
+        sorted_tracks = sorted(tracks_info, key=lambda x: x[2], reverse=True)
+        top_tracks = sorted_tracks[:5]
+
+        # Extract artist names from the top tracks
+        artist_names = [track[1] for track in top_tracks]
+
+       
+        file_path = os.path.join(artist_dir, f"{genre_name}_artists.txt")
+
+        # Write artist names to a text file within the designated folder
+        with open(file_path, "w") as file:
+            for name in artist_names:
+                file.write(name + "\n")
+
+        return jsonify(top_tracks)
+    except Exception as e:
+        logging.error(f"Failed to fetch recommendations: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True)
-    
+     app.run(host='0.0.0.0', port=5001, debug=True)
