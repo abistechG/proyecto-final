@@ -1,11 +1,16 @@
+import os
 from flask import Flask, session, url_for, redirect, request, jsonify
 import logging
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 from spotipy.cache_handler import FlaskSessionCacheHandler
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
+
+artist_dir = 'artist_names'
+
+
+if not os.path.exists(artist_dir):
+    os.makedirs(artist_dir)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -78,10 +83,19 @@ def get_genre_recommendations(genre_name):
     try:
         results = sp.recommendations(seed_genres=[genre_name], limit=100)
         tracks_info = [(track['name'], track['artists'][0]['name'], track['popularity']) for track in results['tracks']]
-        
         sorted_tracks = sorted(tracks_info, key=lambda x: x[2], reverse=True)
-        
         top_tracks = sorted_tracks[:5]
+
+        # Extract artist names from the top tracks
+        artist_names = [track[1] for track in top_tracks]
+
+        # Define the path for the file based on the genre
+        file_path = os.path.join(artist_dir, f"{genre_name}_artists.txt")
+
+        # Write artist names to a text file within the designated folder
+        with open(file_path, "w") as file:
+            for name in artist_names:
+                file.write(name + "\n")
 
         return jsonify(top_tracks)
     except Exception as e:
