@@ -54,13 +54,11 @@ def callback():
 def get_available_genre_seeds():
     try:
         genre_seeds = sp.recommendation_genre_seeds()
-        return genre_seeds['genres']  # This returns a list of available genre seeds
+        return genre_seeds['genres'] 
     except Exception as e:
         logging.error(f"Failed to fetch genre seeds: {str(e)}")
         return []
 
-# You can use this function somewhere in your code to check or log available genres
-print(get_available_genre_seeds())
 
 @app.route('/select_genre')
 def select_genre():
