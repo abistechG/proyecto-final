@@ -77,13 +77,10 @@ def get_genre_recommendations(genre_name):
 
     try:
         results = sp.recommendations(seed_genres=[genre_name], limit=100)
-        # Create a list of tuples containing track name, artist name, and popularity
         tracks_info = [(track['name'], track['artists'][0]['name'], track['popularity']) for track in results['tracks']]
         
-        # Sort the list by popularity in descending order
         sorted_tracks = sorted(tracks_info, key=lambda x: x[2], reverse=True)
         
-        # Select the top 5 tracks
         top_tracks = sorted_tracks[:5]
 
         return jsonify(top_tracks)
