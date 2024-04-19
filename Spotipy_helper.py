@@ -87,7 +87,7 @@ def get_genre_recommendations(genre_name):
         # Extract artist names from the top tracks
         artist_names = [track[1] for track in top_tracks]
 
-        # Define the path for the file based on the genre
+       
         file_path = os.path.join(artist_dir, f"{genre_name}_artists.txt")
 
         # Write artist names to a text file within the designated folder
