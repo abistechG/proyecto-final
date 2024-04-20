@@ -1,3 +1,4 @@
+import re
 import requests
 from bs4 import BeautifulSoup
 
@@ -13,15 +14,13 @@ else:
     print("Failed to retrieve the webpage")
     html_content = ""
 
-soup = BeautifulSoup(html_content, 'lxml')
+soup = BeautifulSoup(html_content, 'html.parser')
+age_tag = soup.find('a', href=lambda href: href and "/age/" in href)
+age_text = age_tag.get_text(strip=True) if age_tag else "Age information not found"
 
 
+#print(soup.prettify())  
 
-age_span = soup.find('span', string =lambda text: text and 'Age' in text)
-age_info = age_span.find('a') if age_span else None
+numbers = re.findall(r'\d+', age_text)
 
-
-if age_info:
-    print(age_info.text.strip())  
-else:
-    print("Age information not found")
+age_number = numbers[0] if numbers else "Age not found"
