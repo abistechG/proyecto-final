@@ -27,7 +27,7 @@ def cache_location(update: bool, json_cache: str, url:str, header:dict, querstri
 if __name__ == '__main__':
     url = "https://booking-com.p.rapidapi.com/v1/hotels/room-list"
 
-    querstring = {"adults_number_by_rooms":"3,1","checkout_date":"2024-09-15","checkin_date":"2024-09-14","units":"metric","currency":"AED","locale":"en-gb","hotel_id":"1676161","children_ages":"5,0,9","children_number_by_rooms":"2,1"}
+    querstring = {"adults_number_by_rooms":"2","checkout_date":"2024-09-20","checkin_date":"2024-09-19","units":"metric","currency":"AED","locale":"en-gb","hotel_id":"1676161"}
 
     header = {
 	"X-RapidAPI-Key": "8e633ad51amsh4f2574b7231ca74p16b3a2jsnf0c73dc94c1f",
