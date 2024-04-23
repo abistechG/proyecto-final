@@ -25,7 +25,7 @@ def cache_location(update: bool, json_cache: str, url:str, header:dict, querstri
             
     return json_data  
 
-def city_IDs(city_name: str, url: str, headers: dict, update = False):
+def city_IDs(city_name: str, url: str, headers: dict, querystring:str, update = False):
     '''
     finds the city id of the passed in city name\n
     stores the data into a file\n
@@ -58,11 +58,24 @@ def restaurant_info(location_id:int, url: str, headers: dict):
         time.sleep(1)  #delay time between calls
         data = cache_location(False, file_name, url, headers, querystring)
         
-        restaurant_name  = data['data'][0]['name'] 
-        num_reviews = data['data'][0]['num_reviews']
-        restaurant_rating = data['data'][0]['rating']
-        restaurants[restaurant_name]['rating'] = restaurant_rating
-        restaurants[restaurant_name]['number of reviews'] = num_reviews
+        
+        
+        if 'data' in data and isinstance(data['data'], list):
+            i = 0
+            while i < len(data['data']):
+                # Check if 'name' key exists in the restaurant data
+                if 'name' in data['data'][i]:
+                    restaurant_name = data['data'][i]['name']
+                    num_reviews = data['data'][i].get('num_reviews', 0)  # Default to 0 if 'num_reviews' doesn't exist
+                    restaurant_rating = data['data'][i].get('rating', 0)  # Default to 0 if 'rating' doesn't exist
+                    
+                    # Add restaurant data to the dictionary
+                    restaurants[restaurant_name] = {
+                        'rating': restaurant_rating,
+                        'number of reviews': num_reviews
+                    }
+                
+                i += 1
     
     return restaurants    
          
@@ -72,26 +85,39 @@ def restaurant_info(location_id:int, url: str, headers: dict):
     
     
 
-if __name__ == '__main__':
-    url = "https://travel-advisor.p.rapidapi.com/locations/v2/auto-complete"
-    city_name = "Casablanca"
+#if __name__ == '__main__':
+ #   url = "https://travel-advisor.p.rapidapi.com/locations/v2/auto-complete"
+  #  city_name = "Casablanca"
 
-    querystring = {"query":city_name,"lang":"en_US","units":"mi"}
-    headers = {
-	"X-RapidAPI-Key": os.getenv('API_KEY'),
-	"X-RapidAPI-Host": "travel-advisor.p.rapidapi.com"
-}
-    file_name = f"locations_{city_name}"
-    data = cache_location(False, file_name, url, headers, querystring )
+   # querystring = {"query":city_name,"lang":"en_US","units":"mi"}
+    #headers = {
+	#"X-RapidAPI-Key": os.getenv('API_KEY'),
+	#"X-RapidAPI-Host": "travel-advisor.p.rapidapi.com"
+#}
+    #file_name = f"locations_{city_name}"
+    #data = cache_location(False, file_name, url, headers, querystring )
     
-    location_id = data['data']['Typeahead_autocomplete']['results'][0]['detailsV2']['locationId']
+    #location_id = data['data']['Typeahead_autocomplete']['results'][0]['detailsV2']['locationId']
     
-    print(type(data))
+    #print(type(data))
+    #tups = city_IDs(city_name,url,headers)
+    #print(tups)
     
-    url = "https://travel-advisor.p.rapidapi.com/restaurants/list"
+    
+    
+    #url2 = "https://travel-advisor.p.rapidapi.com/restaurants/list"
 
-    querystring = {"location_id":str(location_id),"restaurant_tagcategory":"10591","restaurant_tagcategory_standalone":"10591","currency":"USD","lunit":"mi","limit":"30","open_now":"false","offset":"0","lang":"en_US"}
+    #checkDIct = restaurant_info(tups[0],url2,headers)
+    #print('blank')
+    #print('blank')
+    #print('blank')
+    #print(len(checkDIct))
+    
+    #querystring = {"location_id":str(location_id),"restaurant_tagcategory":"10591","restaurant_tagcategory_standalone":"10591","currency":"USD","lunit":"mi","limit":"30","open_now":"false","offset":"0","lang":"en_US"}
 
+    
+    
+    '''
     file2_name = "restaurants_list"
     data2 = cache_location(False, file2_name, url, headers, querystring )
     
@@ -99,3 +125,4 @@ if __name__ == '__main__':
     restaurant_rating = data2['data'][0]['rating']
     print(num_reviews)
     print(restaurant_rating)
+    '''
