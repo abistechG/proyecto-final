@@ -25,7 +25,7 @@ def cache_location(update: bool, json_cache: str, url:str, header:dict, querstri
             
     return json_data  
 
-def city_IDs(city_name: str, url: str, headers: dict, update = False):
+def city_IDs(city_name: str, url: str, headers: dict, querystring:str, update = False):
     '''
     finds the city id of the passed in city name\n
     stores the data into a file\n
