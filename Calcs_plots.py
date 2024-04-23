@@ -1,3 +1,4 @@
-import Spotipy_helper
+from Spotipy_helper import get_genre_recommendations
 import restaurants_helper
 import FamousBirthdays_helper
+
