@@ -2,7 +2,7 @@ import sqlite3
 import os
 from Spotipy_helper import get_artist_names_by_genre 
 from restaurants_helper import cache_location, city_IDs, restaurant_info
-import FamousBirthdays_helper
+from FamousBirthdays_helper import scrape_data
 
 
 def set_up_database(db_name):
@@ -105,10 +105,35 @@ def add_restaurants(restaurants:dict, city_id:int, cur, conn):
 
     
     
-    
+def scrape_data(urls):
+    '''
+    Scrapes data from FamousBirthday Website, and then  stores Age and City
+    '''  
     
  
+def store_data(data):
+    '''
+    Stores age and city for artists in database in three 3 columns, Name, Age and City
+    '''  
+
     
+    conn = sqlite3.connect("Famous.db")
+    cur = conn.cursor()
+    cur.execute('CREATE TABLE IF NOT EXISTS FamousPeople (name TEXT, age INTEGER, city TEXT)')
+    
+    
+    cur.executemany('INSERT INTO FamousPeople (name, age, city) VALUES (?, ?, ?)', data)
+    
+    
+    conn.commit()
+    
+   
+    cur.execute('SELECT city, COUNT(*) FROM FamousPeople GROUP BY city')
+    city_counts = cur.fetchall()
+    for city, count in city_counts:
+        print(f"{city}: {count}")
+    
+    conn.close()    
 
 if __name__ == '__main__':
     setup_database()
