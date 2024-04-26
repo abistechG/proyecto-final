@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from Spotipy_helper import get_artist_names_by_genre 
+import Spotipy_helper  
 from restaurants_helper import cache_location, city_IDs, restaurant_info
 import re
 import requests
@@ -26,7 +26,7 @@ def set_up_database(db_name):
     cur = conn.cursor()
     return cur, conn
 
-def setup_database():
+def setup_spotty_database():
     conn = sqlite3.connect('spotify_data.db')
     cursor = conn.cursor()
     cursor.execute('''
@@ -101,9 +101,10 @@ def add_restaurants(restaurants:dict, city_id:int, cur, conn):
             
         cur.execute('''
                     INSERT INTO restaurants (name,num_reviews,num_rating,city_id)
-                    VALUES (?,?,?)
+                    VALUES (?,?,?,?)
                     ''',
                     (key,valuesVec[0],valuesVec[1],city_id))    
+    conn.commit()
 
     
     
@@ -113,50 +114,84 @@ def add_restaurants(restaurants:dict, city_id:int, cur, conn):
     
 
 if __name__ == '__main__':
-    setup_database()
-    genres = ['hip-hop', 'party', 'k-pop', 'jazz', 'classical']
+    
+    #setup_spotty_database()
+    #genres = ['hip-hop', 'party', 'k-pop', 'jazz', 'classical']
+    
+    
+    curry, conny = set_up_database('restaurants.db')
+    
+    create_restaurants_table(curry,conny)
+    
+    curry1, conny1 = set_up_database('cities.db')
+    
+    create_cities_table(curry1,conny1)
+    
+    url = "https://travel-advisor.p.rapidapi.com/locations/v2/auto-complete"
+    city_name = "Casablanca"
+
+    querystring = {"query":city_name,"lang":"en_US","units":"mi"}
+    headers = {
+	"X-RapidAPI-Key": os.getenv('API_KEY'),
+	"X-RapidAPI-Host": "travel-advisor.p.rapidapi.com"
+}
+    cityID_tup = city_IDs(city_name,url,headers,querystring)
+    #print(cityID_tup)
+    
+    url2 = "https://travel-advisor.p.rapidapi.com/restaurants/list"
+    
+    restaurant_dict = restaurant_info(cityID_tup[0],url2,headers)
+    #print(len(restaurant_dict))
+    
+    add_cities(city_name,cityID_tup[0],curry1,conny1)
+    
+    add_restaurants(restaurant_dict,cityID_tup[0],curry,conny)
+    
     
     ### FamousBirthdays_helper.py ### START ###
-    
-conn = sqlite3.connect("Famous.db")
-cur = conn.cursor()
-cur.execute('CREATE TABLE IF NOT EXISTS FamousPeople (name TEXT, age INTEGER, city TEXT)')
+    '''
+    print('checkpoint 0')
+    conn = sqlite3.connect("Famous.db")
+    cur = conn.cursor()
+    cur.execute('CREATE TABLE IF NOT EXISTS FamousPeople (name TEXT, age INTEGER, city TEXT)')
+    print('checkpoint 1')
+    urls = ['https://www.famousbirthdays.com/people/se7en.html']  # Add more URLs as needed
 
-urls = ['https://www.famousbirthdays.com/people/se7en.html']  # Add more URLs as needed
+    for url in urls:
+        response = requests.get(url)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Fetching the age
+            age_tag = soup.find('a', href=lambda href: href and "/age/" in href)
+            age_text = age_tag.get_text(strip=True) if age_tag else "Age information not found"
+            numbers = re.findall(r'\d+', age_text)
+            age_number = int(numbers[0]) if numbers else None
+            
+            # Fetching the city
+            city_tag = soup.find('a', href=lambda href: href and "/city/" in href)
+            city_name = city_tag.get_text(strip=True) if city_tag else "City not found"
+            
+            # Insert data into the database
+            cur.execute('INSERT INTO FamousPeople (name, age, city) VALUES (?, ?, ?)', 
+                        (url.split('/')[-1].replace('.html', ''), age_number, city_name))
+        else:
+            print(f"Failed to retrieve the webpage for {url}")
+    print('checkpoint 2')
+    # Commit changes and close the database connection
+    conn.commit()
+    #conn.close()
+    print('checkpoint 3')
+    # Output city counts
+    #cur = conn.cursor()
+    cur.execute('SELECT city, COUNT(*) FROM FamousPeople GROUP BY city')
+    print('checkpoint 4')
+    city_counts = cur.fetchall()
+    for city, count in city_counts:
+        print(f"{city}: {count}")
+    print('checkpoint 5')
+    cur.close() 
+    print('checkpoint 6')
 
-for url in urls:
-    response = requests.get(url)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Fetching the age
-        age_tag = soup.find('a', href=lambda href: href and "/age/" in href)
-        age_text = age_tag.get_text(strip=True) if age_tag else "Age information not found"
-        numbers = re.findall(r'\d+', age_text)
-        age_number = int(numbers[0]) if numbers else None
-        
-        # Fetching the city
-        city_tag = soup.find('a', href=lambda href: href and "/city/" in href)
-        city_name = city_tag.get_text(strip=True) if city_tag else "City not found"
-        
-        # Insert data into the database
-        cur.execute('INSERT INTO FamousPeople (name, age, city) VALUES (?, ?, ?)', 
-                    (url.split('/')[-1].replace('.html', ''), age_number, city_name))
-    else:
-        print(f"Failed to retrieve the webpage for {url}")
-
-# Commit changes and close the database connection
-conn.commit()
-conn.close()
-
-# Output city counts
-cur = conn.cursor()
-cur.execute('SELECT city, COUNT(*) FROM FamousPeople GROUP BY city')
-city_counts = cur.fetchall()
-for city, count in city_counts:
-    print(f"{city}: {count}")
-
-cur.close() 
-
-### FamousBirthdays_helper.py ### END ###
-    
+    ### FamousBirthdays_helper.py ### END ###
+'''
