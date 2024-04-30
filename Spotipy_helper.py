@@ -1,17 +1,16 @@
 import os
-import sqlite3
-from flask import Flask, session, url_for, redirect, request, jsonify
+from flask import Flask, session, url_for, redirect, request, jsonify, render_template_string
 import logging
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 from spotipy.cache_handler import FlaskSessionCacheHandler
 
+# Directory for saving playlist tracks
+playlist_dir = 'playlist_tracks'
 
-artist_dir = 'artist_names'
-
-
-if not os.path.exists(artist_dir):
-    os.makedirs(artist_dir)
+# Create directory if it doesn't exist
+if not os.path.exists(playlist_dir):
+    os.makedirs(playlist_dir)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -22,7 +21,6 @@ client_id = '5f83f8e7bebf4896a37737a50d9ef4b5'
 client_secret = 'c026360848cd451793486a8707591140'
 redirect_url = 'http://localhost:5001/callback'
 scope = "playlist-read-private,playlist-read-collaborative,user-top-read"
-
 
 # Setup Spotify OAuth handler
 cache_handler = FlaskSessionCacheHandler(session)
@@ -38,68 +36,92 @@ sp_oauth = SpotifyOAuth(
 # Initialize Spotify client
 sp = Spotify(auth_manager=sp_oauth)
 
+def fetch_diverse_playlists(limit=5):
+    valid_playlists = []
+    total_checked = 0
+    while len(valid_playlists) < limit:
+        playlists = sp.featured_playlists(limit=limit - len(valid_playlists), offset=total_checked)['playlists']['items']
+        for playlist in playlists:
+            tracks = sp.playlist_tracks(playlist['id'])['items']
+            artist_count = {}
+            for item in tracks:
+                for artist in item['track']['artists']:
+                    artist_count[artist['name']] = artist_count.get(artist['name'], 0) + 1
+            max_songs_by_single_artist = max(artist_count.values(), default=0)
+            if max_songs_by_single_artist / len(tracks) <= 0.1:  
+                valid_playlists.append(playlist)
+            total_checked += 1
+    return valid_playlists
+
 @app.route('/')
 def home():
     if not sp_oauth.validate_token(cache_handler.get_cached_token()):
         auth_url = sp_oauth.get_authorize_url()
         return redirect(auth_url)
-    global sp
-    sp = Spotify(auth_manager=sp_oauth)
-    return redirect(url_for('select_genre'))
+    return redirect(url_for('featured_playlists'))
 
 @app.route('/callback')
 def callback():
-    sp_oauth.get_access_token(request.args['code'])  # Properly exchange the code for a token
-    return redirect(url_for('select_genre'))
+    sp_oauth.get_access_token(request.args['code'])
+    return redirect(url_for('featured_playlists'))
 
-def get_available_genre_seeds():
+@app.route('/featured_playlists')
+def featured_playlists():
     try:
-        genre_seeds = sp.recommendation_genre_seeds()
-        return genre_seeds['genres'] 
+        playlists = fetch_diverse_playlists(limit=5)
+        playlists_display = render_template_string('''
+            <h1>Featured Playlists with Diverse Artists</h1>
+            <ul>
+                {% for playlist in playlists %}
+                    <li><a href="{{ url_for('playlist_details', playlist_id=playlist.id) }}">{{ playlist.name }}</a></li>
+                {% endfor %}
+            </ul>
+        ''', playlists=playlists)
+        return playlists_display
     except Exception as e:
-        logging.error(f"Failed to fetch genre seeds: {str(e)}")
-        return []
-
-
-@app.route('/select_genre')
-def select_genre():
-    return '''
-    <h1>Select a Genre</h1>
-    <ul>
-        <li><a href="/genre_recommendations/hip-hop">Hip Hop</a></li>
-        <li><a href="/genre_recommendations/party">Party</a></li>
-        <li><a href="/genre_recommendations/k-pop">Kpop</a></li>
-        <li><a href="/genre_recommendations/jazz">Jazz</a></li>
-        <li><a href="/genre_recommendations/classical">Classical</a></li>
-    </ul>
-    '''
-
-@app.route('/genre_recommendations/<genre_name>')
-def get_genre_recommendations(genre_name):
-    if not sp:
-        return "Spotify client not initialized. Please authenticate first.", 403
-
-    try:
-        results = sp.recommendations(seed_genres=[genre_name], limit=100)
-        tracks_info = [(track['name'], track['artists'][0]['name'], track['popularity']) for track in results['tracks']]
-        sorted_tracks = sorted(tracks_info, key=lambda x: x[2], reverse=True)
-        top_tracks = sorted_tracks[:5]
-
-        # Extract artist names from the top tracks
-        artist_names = [track[1] for track in top_tracks]
-
-       
-        file_path = os.path.join(artist_dir, f"{genre_name}_artists.txt")
-
-        # Write artist names to a text file within the designated folder
-        with open(file_path, "w") as file:
-            for name in artist_names:
-                file.write(name + "\n")
-
-        return jsonify(top_tracks)
-    except Exception as e:
-        logging.error(f"Failed to fetch recommendations: {str(e)}")
+        logging.error(f"Error fetching featured playlists: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/playlist_details/<playlist_id>')
+def playlist_details(playlist_id):
+    try:
+        playlist = sp.playlist(playlist_id)
+        tracks = sp.playlist_tracks(playlist_id)['items']
+        # Extract track details and popularity
+        track_details = [
+            {
+                'name': item['track']['name'],
+                'artist': item['track']['artists'][0]['name'],
+                'popularity': item['track']['popularity']
+            }
+            for item in tracks if item['track']
+        ]
+
+        # Sort tracks by popularity, descending
+        sorted_tracks = sorted(track_details, key=lambda x: x['popularity'], reverse=True)
+
+        details_display = render_template_string('''
+            <h1>Tracks in Playlist: {{ playlist.name }}</h1>
+            <ul>
+                {% for track in sorted_tracks %}
+                    <li>{{ track.name }} by {{ track.artist }}</li>
+                {% endfor %}
+            </ul>
+            <a href="{{ url_for('featured_playlists') }}">Back to Playlists</a>
+        ''', playlist=playlist, sorted_tracks=sorted_tracks)
+
+        # Write playlist details to file, only saving the first artist's name
+        file_path = os.path.join(playlist_dir, f"{playlist['name']}.txt")
+        with open(file_path, 'w') as file:
+            for track in sorted_tracks:
+                file.write(f"{track['artist']}\n")
+
+        return details_display
+    except Exception as e:
+        logging.error(f"Error fetching playlist details: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
+
      app.run(host='0.0.0.0', port=5001, debug=True)
