@@ -254,7 +254,7 @@ if __name__ == '__main__':
     print('checkpoint 5')
     cur.close() 
     print('checkpoint 6')
-
-    ### FamousBirthdays_helper.py ### END ###
 '''
+    ### FamousBirthdays_helper.py ### END ###
+
 conn.close()
