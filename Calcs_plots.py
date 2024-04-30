@@ -1,16 +1,13 @@
 import sqlite3
 import os
-import Spotipy_helper  
 from restaurants_helper import cache_location, city_IDs, restaurant_info
-
-from FamousBirthdays_helper import scrape_data
-
+from Spotipy_helper import fetch_diverse_playlists, display_playlist_details
 import re
 import requests
 from bs4 import BeautifulSoup
 
 
-
+#Restaurante 
 def set_up_database(db_name):
     """
     Sets up a SQLite database connection and cursor.
@@ -29,26 +26,6 @@ def set_up_database(db_name):
     conn = sqlite3.connect(path + "/" + db_name)
     cur = conn.cursor()
     return cur, conn
-
-def setup_spotty_database():
-    conn = sqlite3.connect('spotify_data.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS genres (
-            id INTEGER PRIMARY KEY,
-            name TEXT UNIQUE
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS artists (
-            id INTEGER PRIMARY KEY,
-            name TEXT UNIQUE,
-            genre_id INTEGER,
-            FOREIGN KEY (genre_id) REFERENCES genres(id)
-        )
-    ''')
-    conn.commit()
-    conn.close()
     
 def create_restaurants_table(cur,conn):
     '''
@@ -110,40 +87,96 @@ def add_restaurants(restaurants:dict, city_id:int, cur, conn):
                     (key,valuesVec[0],valuesVec[1],city_id))    
     conn.commit()
 
+ #Musica
+ # Connect to the SQLite database
+conn = sqlite3.connect('music.db')
+cursor = conn.cursor()
+
+# Create tables with modifications
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS Artists (
+    artist_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    artist_name TEXT UNIQUE NOT NULL
+)''')
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS Playlists (
+    playlist_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    playlist_name TEXT UNIQUE NOT NULL
+)''')
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS Songs (
+    song_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    song_name TEXT NOT NULL,
+    artist_id INTEGER NOT NULL,
+    playlist_id INTEGER NOT NULL,
+    spotify_track_id TEXT UNIQUE NOT NULL,
+    FOREIGN KEY (artist_id) REFERENCES Artists(artist_id),
+    FOREIGN KEY (playlist_id) REFERENCES Playlists(playlist_id)
+)''')
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS FetchState (
+    state_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    last_playlist_offset INTEGER
+)''')
+
+# Initialize the FetchState table if empty
+cursor.execute("INSERT OR IGNORE INTO FetchState (last_playlist_offset) VALUES (0)")
+conn.commit()
+
+# Updated function to fetch and store data with offset and duplication check
+def fetch_and_store_data():
+    # Retrieve the last offset
+    cursor.execute("SELECT last_playlist_offset FROM FetchState")
+    offset = cursor.fetchone()[0]
+    
+    # Fetch playlists starting from the last offset
+    playlists = fetch_diverse_playlists(limit=5, offset=offset)
+    songs_added = 0
+    
+    for playlist in playlists:
+        if songs_added >= 25:
+            break
+        tracks = display_playlist_details(playlist['id'])
+        for track in tracks:
+            if songs_added >= 25:
+                break
+            # Check if the song has already been added
+            cursor.execute("SELECT song_id FROM Songs WHERE spotify_track_id = ?", (track['spotify_id'],))
+            if cursor.fetchone() is None:  # Only proceed if the song hasn't been added
+                artist_name = track['artist']
+                song_name = track['name']
+                spotify_track_id = track['spotify_id']
+
+                # Insert artist
+                cursor.execute("INSERT OR IGNORE INTO Artists (artist_name) VALUES (?)", (artist_name,))
+                cursor.execute("SELECT artist_id FROM Artists WHERE artist_name = ?", (artist_name,))
+                artist_id = cursor.fetchone()[0]
+
+                # Insert playlist
+                cursor.execute("INSERT OR IGNORE INTO Playlists (playlist_name) VALUES (?)", (playlist['name'],))
+                cursor.execute("SELECT playlist_id FROM Playlists WHERE playlist_name = ?", (playlist['name'],))
+                playlist_id = cursor.fetchone()[0]
+
+                # Insert song
+                cursor.execute("INSERT INTO Songs (song_name, artist_id, playlist_id, spotify_track_id) VALUES (?, ?, ?, ?)", 
+                               (song_name, artist_id, playlist_id, spotify_track_id))
+                songs_added += 1
+
+    # Update the offset in FetchState
+    cursor.execute("UPDATE FetchState SET last_playlist_offset = last_playlist_offset + 5")
+    conn.commit()
+    print(f"Added {songs_added} songs to the database.")   
     
     
-def scrape_data(urls):
-    '''
-    Scrapes data from FamousBirthday Website, and then  stores Age and City
-    '''  
     
  
-def store_data(data):
-    '''
-    Stores age and city for artists in database in three 3 columns, Name, Age and City
-    '''  
-
     
-    conn = sqlite3.connect("Famous.db")
-    cur = conn.cursor()
-    cur.execute('CREATE TABLE IF NOT EXISTS FamousPeople (name TEXT, age INTEGER, city TEXT)')
-    
-    
-    cur.executemany('INSERT INTO FamousPeople (name, age, city) VALUES (?, ?, ?)', data)
-    
-    
-    conn.commit()
-    
-   
-    cur.execute('SELECT city, COUNT(*) FROM FamousPeople GROUP BY city')
-    city_counts = cur.fetchall()
-    for city, count in city_counts:
-        print(f"{city}: {count}")
-    
-    conn.close()    
 
 if __name__ == '__main__':
     
+    fetch_and_store_data()
+    
+   
     #setup_spotty_database()
     #genres = ['hip-hop', 'party', 'k-pop', 'jazz', 'classical']
     
@@ -224,3 +257,4 @@ if __name__ == '__main__':
 
     ### FamousBirthdays_helper.py ### END ###
 '''
+conn.close()
