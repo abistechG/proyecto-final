@@ -177,14 +177,25 @@ def add_artistInfo(name:str, age:int, city:str, cur,conn):
     conn.commit()
 
 
-def add_restaurants(restaurants: dict, city_id: int, cur, conn, limit: int = 25):
+def add_restaurants(url:str, headers:str, city_ids: list, cur, conn, limit: int = 25):
     '''
     adds restaurant data from dictionary (restaurant_info) and puts 
     on restaurant data table
     returns if we should continue to next city
     '''
-    count_path = "insertion_count.txt"
+    if not os.path.exists("city_id_check"):
+        with open("city_id_check", "w") as f:     
+            f.write("")
     
+    with open("city_id_check.txt", "r") as fh:
+            file = fh.read()
+            for city_id in city_ids:
+                if str(city_id) not in file:
+                    used_id = city_id
+                    break
+    restaurants = restaurant_info(used_id,url,headers)
+    
+    count_path = "insertion_count.txt"
     
     if not os.path.exists(count_path):
         with open(count_path, "w") as f:     
@@ -200,7 +211,7 @@ def add_restaurants(restaurants: dict, city_id: int, cur, conn, limit: int = 25)
         entries_to_add = list(restaurants.items())[count:min(new_count, len(restaurants))]
         
         for name, details in entries_to_add:
-            print(name)
+           # print(name)
             
             if details.get('number of reviews') not in [None, ""]:
                 num_reviews = float(details['number of reviews'])
@@ -211,14 +222,14 @@ def add_restaurants(restaurants: dict, city_id: int, cur, conn, limit: int = 25)
                 num_rating = float(details['rating'])
             else:
                 num_rating = 0
-            print(num_reviews)
-            print(num_rating)
+            #print(num_reviews)
+            #print(num_rating)
            
             cur.execute('''
                         INSERT INTO restaurants (name, num_reviews, num_rating, city_id)
                         VALUES (?, ?, ?, ?)
                         ''',
-                        (name, num_reviews, num_rating, city_id))
+                        (name, num_reviews, num_rating, used_id))
         
         conn.commit()
         f.seek(0)
@@ -226,11 +237,17 @@ def add_restaurants(restaurants: dict, city_id: int, cur, conn, limit: int = 25)
         
         
         if count >= len(restaurants):
-            return 'next'
+            with open("city_id_check.txt", "a") as fh:  
+                fh.write(f"{used_id}\n")  
+
+            
+        else: 
+            f.write(str(min(new_count, len(restaurants))))
+          #  return 'next'
         
-        f.write(str(min(new_count, len(restaurants))))
         
-    return 'stay'
+        
+   # return 'stay'
 
  #Musica
  # Connect to the SQLite database
@@ -319,7 +336,7 @@ def fetch_and_store_data(cursor,conn):
 ##############################################################
 #PLOTS   
 ##############################################################
-def plot_average_song_duration(cursor):
+def plot_average_song_duration(cursor, output_file):
     # Fetch song durations and playlist names
     cursor.execute('''
         SELECT Playlists.playlist_name, AVG(Songs.duration_seconds) as avg_duration
@@ -329,10 +346,10 @@ def plot_average_song_duration(cursor):
     ''')
     result = cursor.fetchall()
     
-    # Prepare data for plotting
+    # Prepare data for plotting and output
     playlist_names = [row[0] for row in result]
     avg_durations = [row[1] for row in result]
-    
+
     # Plotting
     plt.figure(figsize=(10, 5))
     plt.bar(playlist_names, avg_durations, color='skyblue')
@@ -342,8 +359,15 @@ def plot_average_song_duration(cursor):
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.show()
+    
+    # Output to file
+    with open(output_file, 'w') as file:
+        for playlist_name, avg_duration in result:
+            file.write(f'{playlist_name}: {avg_duration:.2f} seconds\n')
 
-def plot_average_popularity(cursor):
+
+
+def plot_average_popularity(cursor, output_file):
     # Fetch average popularity and playlist names
     cursor.execute('''
         SELECT Playlists.playlist_name, AVG(Songs.popularity) as avg_popularity
@@ -353,10 +377,10 @@ def plot_average_popularity(cursor):
     ''')
     result = cursor.fetchall()
     
-    # Prepare data for plotting
+    # Prepare data for plotting and output
     playlist_names = [row[0] for row in result]
     avg_popularities = [row[1] for row in result]
-    
+
     # Plotting
     plt.figure(figsize=(10, 5))
     plt.bar(playlist_names, avg_popularities, color='lightgreen')
@@ -366,6 +390,12 @@ def plot_average_popularity(cursor):
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.show()
+    
+    # Output to file
+    with open(output_file, 'w') as file:
+        for playlist_name, avg_popularity in result:
+            file.write(f'{playlist_name}: {avg_popularity:.2f}\n')
+
 
 
 def fetch_city_data(cur):
@@ -382,7 +412,7 @@ def fetch_city_data(cur):
 
 def plot_city_data(cur):
     """
-    Plots a line graph showing average rating and average review count for each city.
+    Plots a line graph showing average rating and average review count for each city and writes the data to a file.
     """
     city_data = fetch_city_data(cur)
     if city_data:
@@ -400,9 +430,9 @@ def plot_city_data(cur):
         ax1.tick_params(axis='y', labelcolor=color)
 
         # Creating a twin object for two different y-axes on the same plot
-        ax2 = ax1.twinx()  
+        ax2 = ax1.twinx()
         color = 'tab:blue'
-        ax2.set_ylabel('Average Review Count', color=color)  # we already handled the x-label with ax1
+        ax2.set_ylabel('Average Review Count', color=color)
         ax2.plot(cities, avg_reviews, color=color)
         ax2.tick_params(axis='y', labelcolor=color)
 
@@ -410,8 +440,16 @@ def plot_city_data(cur):
         plt.title('Average Rating and Review Count by City')
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
         plt.show()
+
+        # Write data analysis to file
+        with open('city_data_analysis.txt', 'w') as file:
+            file.write('City, Average Rating, Average Review Count\n')
+            for city, rating, review in zip(cities, avg_ratings, avg_reviews):
+                file.write(f'{city}, {rating:.2f}, {review:.2f}\n')
     else:
         print("No data available to plot.")
+
+
     
 def plot_average_artists(cursor):
     # Fetch average popularity and playlist names
@@ -434,14 +472,18 @@ if __name__ == '__main__':
     create_cities_table(curry,conny)
     create_artistInfo(curry,conny)
     
-    create_artistInfo(curry,conny)
     
     #add_missing_columns(curry, conny)
     url = "https://travel-advisor.p.rapidapi.com/locations/v2/auto-complete"
     
     #fetch_and_store_data(curry,conny)
-    
+    headers = {
+            "X-RapidAPI-Key": '8e633ad51amsh4f2574b7231ca74p16b3a2jsnf0c73dc94c1f',
+            "X-RapidAPI-Host": "travel-advisor.p.rapidapi.com"
+            }
     # opening top 5 artist file restaurant implementation 
+    
+    city_nombres = []
     with open('batched_artists_details.csv', mode='r', newline='') as file:
     # Create a CSV reader object
         artists = csv.DictReader(file)
@@ -454,29 +496,36 @@ if __name__ == '__main__':
             age = artist['Age']
             
             city_name = artist['Begin Area']
-
-            querystring = {"query":city_name,"lang":"en_US","units":"mi"}
-            headers = {
-            "X-RapidAPI-Key": '8e633ad51amsh4f2574b7231ca74p16b3a2jsnf0c73dc94c1f',
-            "X-RapidAPI-Host": "travel-advisor.p.rapidapi.com"
-            }
-            cityID_tup = city_IDs(city_name,url,headers,querystring)
+            city_nombres.append(city_name)
+    print('checkpoint 1')       
+    print(city_nombres)      
+    print('checkpoint 2')  
+          
+    cities_list = []
+    for city in city_nombres: 
+        print('in loop')  
+        querystring = {"query":city,"lang":"en_US","units":"mi"} 
+        id = city_IDs(city,url,headers,querystring)   
+        cities_list.append(id[0])
             #print(cityID_tup)
+    print('out loop')  
+    print(cities_list)
+    print('checkpoint 3')        
+    url2 = "https://travel-advisor.p.rapidapi.com/restaurants/list"
             
-            url2 = "https://travel-advisor.p.rapidapi.com/restaurants/list"
-            
-            restaurant_dict = restaurant_info(cityID_tup[0],url2,headers)
-            print(restaurant_dict)
-            add_cities(city_name,cityID_tup[0],curry,conny)
-            add_restaurants(restaurant_dict,cityID_tup[0],curry,conny)
+        #restaurant_dict = restaurant_info(cityID_tup[0],url2,headers)
+        #print(restaurant_dict)
+        #add_cities(city_name,cityID_tup[0],curry,conny)
+    add_restaurants(url2,headers,cities_list,curry,conny)
+    print('checkpoint 4')  
 
 
 
             
             
 
-    #plot_average_song_duration(curry)
-    #plot_city_data(curry)
+    #plot_average_song_duration(curry, 'average_song_duration.txt')
+    #pplot_average_popularity(curry, 'average_popularity.txt')
     
     
     curry.close()
