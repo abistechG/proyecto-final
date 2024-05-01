@@ -25,6 +25,24 @@ def cache_location(update: bool, json_cache: str, url:str, header:dict, querstri
             
     return json_data  
 
+def find_key(data, target):
+    """
+    Recursively search for the target key in the JSON data.
+    """
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key == target:
+                return value
+            result = find_key(value, target)
+            if result is not None:
+                return result
+    elif isinstance(data, list):
+        for item in data:
+            result = find_key(item, target)
+            if result is not None:
+                return result
+    return None
+
 def city_IDs(city_name: str, url: str, headers: dict, querystring:str, update = False):
     '''
     finds the city id of the passed in city name\n
@@ -34,11 +52,18 @@ def city_IDs(city_name: str, url: str, headers: dict, querystring:str, update = 
     
     file_name = f"locations_{city_name}"
     
-    data = cache_location(update, file_name, url, headers, querystring )
+    data = cache_location(update, file_name, url, headers, querystring)
     
-    location_id = data['data']['Typeahead_autocomplete']['results'][0]['detailsV2']['locationId']
+    locate = data['data']['Typeahead_autocomplete']['results']
     
-    return (location_id,file_name)
+    for entry in locate:
+        details_v2 = entry.get('detailsV2', {})
+        location_id = details_v2.get('locationId')
+        if location_id:
+            return (location_id, file_name)
+    
+    return None
+
 
 def restaurant_info(location_id:int, url: str, headers: dict):
     '''
@@ -85,23 +110,23 @@ def restaurant_info(location_id:int, url: str, headers: dict):
     
     
 
-#if __name__ == '__main__':
- #   url = "https://travel-advisor.p.rapidapi.com/locations/v2/auto-complete"
-  #  city_name = "Casablanca"
+if __name__ == '__main__':
+    url = "https://travel-advisor.p.rapidapi.com/locations/v2/auto-complete"
+    city_name = "Detroit"
 
-   # querystring = {"query":city_name,"lang":"en_US","units":"mi"}
-    #headers = {
-	#"X-RapidAPI-Key": os.getenv('API_KEY'),
-	#"X-RapidAPI-Host": "travel-advisor.p.rapidapi.com"
-#}
-    #file_name = f"locations_{city_name}"
-    #data = cache_location(False, file_name, url, headers, querystring )
+    querystring = {"query":city_name,"lang":"en_US","units":"mi"}
+    headers = {
+	"X-RapidAPI-Key": '8e633ad51amsh4f2574b7231ca74p16b3a2jsnf0c73dc94c1f',
+	"X-RapidAPI-Host": "travel-advisor.p.rapidapi.com"
+}
+    file_name = f"locations_{city_name}"
+    data = cache_location(False, file_name, url, headers, querystring )
     
-    #location_id = data['data']['Typeahead_autocomplete']['results'][0]['detailsV2']['locationId']
+   # location_id = data['data']['Typeahead_autocomplete']['results'][0]['detailsV2']['locationId']
     
     #print(type(data))
-    #tups = city_IDs(city_name,url,headers)
-    #print(tups)
+    tups = city_IDs(city_name,url,headers,querystring)
+    print(tups)
     
     
     

@@ -12,8 +12,8 @@ if not os.path.exists(playlist_dir):
     os.makedirs(playlist_dir)
 
 # Spotify API credentials. These are required for accessing Spotify's Web API.
-client_id = '5f83f8e7bebf4896a37737a50d9ef4b5'
-client_secret = 'c026360848cd451793486a8707591140'
+client_id = 'a5e07be37285422b8f7353f4b9681df8' #'5f83f8e7bebf4896a37737a50d9ef4b5' <<abys
+client_secret = 'f2b24cf1550e46f3b15c51092d768920' #'c026360848cd451793486a8707591140' <<abys
 redirect_uri = 'http://localhost:5001/callback'
 scope = 'playlist-read-private,playlist-read-collaborative,user-top-read'
 
@@ -44,7 +44,7 @@ def fetch_diverse_playlists(limit=5, offset=0):
                     artist_count[artist['name']] = artist_count.get(artist['name'], 0) + 1
             max_songs_by_single_artist = max(artist_count.values(), default=0)
             # Validate playlist diversity: no artist should dominate the playlist.
-            if max_songs_by_single_artist / len(tracks) <= 0.1:
+            if max_songs_by_single_artist / len(tracks) <= 0.9:
                 valid_playlists.append(playlist)
             total_checked += 1
     return valid_playlists
@@ -56,16 +56,17 @@ def display_playlist_details(playlist_id):
         'name': item['track']['name'],
         'artist': item['track']['artists'][0]['name'],
         'spotify_id': item['track']['id'],
-        'popularity': item['track']['popularity']
+        'popularity': item['track']['popularity'], 
+        'duration_ms': item['track']['duration_ms'], 'duration_sec': item['track']['duration_ms'] // 1000
     } for item in tracks]
     
     # Sort tracks by popularity before saving.
+    
     sorted_tracks = sorted(track_details, key=lambda x: x['popularity'], reverse=True)
     file_path = os.path.join(playlist_dir, f"{playlist['name']}.txt")
-    with open(file_path, 'w') as file:
-        for track in sorted_tracks:
-            file.write(f"{track['artist']}\n")
     return sorted_tracks
+
+
 
 # HTTP server to handle Spotify OAuth callback and display fetched playlists.
 class RequestHandler(http.server.SimpleHTTPRequestHandler):
