@@ -76,8 +76,6 @@ def insert_data_from_csv(csv_path, conn):
 
 
 
-    
-
 
 
 
@@ -649,12 +647,12 @@ if __name__ == '__main__':
    
     plot_average_song_duration(curry, 'average_song_duration.txt')
     plot_average_popularity(curry, 'average_popularity.txt')
-    """
+    
     
     
     create_db_and_tables(conny)
     insert_data_from_csv('all_artists_data.csv',conny)
-    
+    """
     curry.close()
    
     
