@@ -8,6 +8,77 @@ import requests
 from FamousBirthdays_helper import calculate_age
 import matplotlib.pyplot as plt
 from bs4 import BeautifulSoup
+import pandas as pd
+
+
+def create_db_and_tables(conn):
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS citys (
+            city_id INTEGER PRIMARY KEY,
+            city_name TEXT UNIQUE
+        );
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS artists (
+            artist_id INTEGER PRIMARY KEY,
+            artist_name TEXT,
+            age INTEGER,
+            city_id INTEGER,
+            FOREIGN KEY(city_id) REFERENCES citys(city_id)
+        );
+    ''')
+    conn.commit()
+
+def get_last_processed_index():
+    try:
+        with open('last_index.txt', 'r') as file:
+            return int(file.read().strip())
+    except FileNotFoundError:
+        return 0
+
+def set_last_processed_index(index):
+    with open('last_index.txt', 'w') as file:
+        file.write(str(index))
+
+def insert_data_from_csv(csv_path, conn):
+    data = pd.read_csv(csv_path)
+    last_index = get_last_processed_index()
+    cursor = conn.cursor()
+    
+    # Calculate the range to process
+    start_index = last_index
+    end_index = min(last_index + 25, len(data))
+    subset_data = data.iloc[start_index:end_index]
+
+    print(subset_data)  # Optional: print data being processed for confirmation
+
+    for index, row in subset_data.iterrows():
+        # Handle city insertion and retrieval of city_id
+        cursor.execute('SELECT city_id FROM citys WHERE city_name = ?', (row['Begin Area'],))
+        city_id = cursor.fetchone()
+        if city_id is None:
+            cursor.execute('INSERT INTO citys (city_name) VALUES (?)', (row['Begin Area'],))
+            conn.commit()
+            city_id = cursor.lastrowid
+        else:
+            city_id = city_id[0]
+
+        # Insert artist data
+        cursor.execute('''
+            INSERT INTO artists (artist_name, age, city_id)
+            VALUES (?, ?, ?)
+        ''', (row['Artist Name'], row['Age'], city_id))
+
+    conn.commit()
+    set_last_processed_index(end_index)
+    
+
+
+
+    
+
+
 
 
 def append_artist_to_file(artist_name):
@@ -100,17 +171,15 @@ def create_artistInfo(cur,conn):
                 ''')
     conn.commit()
 
-def add_cities(city_name:str, city_id:int, cur,conn):
-    '''
-    adds city name (from external input) and city id (from city_IDs)
-    onto cities data table 
-    '''
-    cur.execute('''
-                INSERT INTO cities (city_id, name)
-                VALUES (?,?)
-                ''',
-                (city_id, city_name))
-    
+def add_cities(city_name, city_id, cur,conn):
+    cur.execute("SELECT city_id FROM cities WHERE city_id = ?", (city_id,))
+    if cur.fetchone() is None:
+        # If the city_id does not exist, perform the insert
+        cur.execute('''
+            INSERT INTO cities (city_id,name)
+            VALUES (?, ?)
+        ''', (city_name, city_id))
+
     conn.commit()
 
 def add_artistInfo(name:str, age:int, city:str, cur,conn):
@@ -177,14 +246,14 @@ def add_artistInfo(name:str, age:int, city:str, cur,conn):
     conn.commit()
 
 
-def add_restaurants(url:str, headers:str, city_ids: list, cur, conn, limit: int = 25):
+def add_restaurants(url:str, headers:str, city_ids: list, city_info:dict, cur, conn, limit: int = 25):
     '''
     adds restaurant data from dictionary (restaurant_info) and puts 
     on restaurant data table
     returns if we should continue to next city
     '''
-    if not os.path.exists("city_id_check"):
-        with open("city_id_check", "w") as f:     
+    if not os.path.exists("city_id_check.txt"):
+        with open("city_id_check.txt", "w") as f:     
             f.write("")
     
     with open("city_id_check.txt", "r") as fh:
@@ -238,7 +307,9 @@ def add_restaurants(url:str, headers:str, city_ids: list, cur, conn, limit: int 
         
         if count >= len(restaurants):
             with open("city_id_check.txt", "a") as fh:  
-                fh.write(f"{used_id}\n")  
+                fh.write(f"{used_id}\n") 
+            city_name =  city_info.get(used_id)
+            add_cities(city_name,used_id,cur,conn)
 
             
         else: 
@@ -461,19 +532,50 @@ def plot_average_artists(cursor):
     ''')
     result = cursor.fetchall()
 
+def count_artists_by_city(cursor,conn):
+
+    # SQL query to count artists by city
+    cursor.execute('''
+        SELECT c.city_name, COUNT(a.artist_id) AS artist_count
+        FROM artists AS a
+        JOIN cities AS c ON a.city_id = c.city_id
+        GROUP BY c.city_name
+        ORDER BY artist_count DESC
+    ''')
+
+    # Fetch all the results
+    results = cursor.fetchall()
+    conn.close()
+
+    # Write the results to a file
+    with open('artists_by_city_count.txt', 'w') as file:
+        for city_name, count in results:
+            file.write(f"{city_name}: {count}\n")
+
+# Example usage
+
+
 
 
 if __name__ == '__main__':
 
-    curry, conny = set_up_database('popularity_central.db')
-    #spotified_tables(curry,conny)
     
+
+    
+    curry, conny = set_up_database('popularity_central.db')
+    #Collect data of Spotify featured Playlist 
+    #spotified_tables(curry,conny)
+    #add_missing_columns(curry, conny)
+    #fetch_and_store_data(curry,conny)
+    #plot and output data 
+    #plot_average_song_duration(curry, 'average_song_duration.txt')
+    #plot_average_popularity(curry, 'average_popularity.txt')
+    """
     create_restaurants_table(curry,conny)
     create_cities_table(curry,conny)
     create_artistInfo(curry,conny)
     
     
-    #add_missing_columns(curry, conny)
     url = "https://travel-advisor.p.rapidapi.com/locations/v2/auto-complete"
     
     #fetch_and_store_data(curry,conny)
@@ -519,14 +621,23 @@ if __name__ == '__main__':
     add_restaurants(url2,headers,cities_list,curry,conny)
     print('checkpoint 4')  
 
+    #create_db_and_tables(curry,conny)
+    #insert_data_from_csv('for_restaurants.csv',curry,conny)
+      
 
 
             
             
-
-    #plot_average_song_duration(curry, 'average_song_duration.txt')
-    #pplot_average_popularity(curry, 'average_popularity.txt')
+   
+    plot_average_song_duration(curry, 'average_song_duration.txt')
+    plot_average_popularity(curry, 'average_popularity.txt')
+    """
     
+    
+    create_db_and_tables(conny)
+    insert_data_from_csv('all_artists_data.csv',conny)
     
     curry.close()
    
+    
+

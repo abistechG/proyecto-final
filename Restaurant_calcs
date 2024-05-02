@@ -1,0 +1,64 @@
+from Calcs_plots import set_up_database, create_restaurants_table,create_cities_table,create_artistInfo,city_IDs,add_restaurants,add_cities
+import sqlite3
+import csv
+
+
+if __name__ == '__main__':
+    curry, conny = set_up_database('popularity_central.db')
+
+    create_restaurants_table(curry,conny)
+    create_cities_table(curry,conny)
+    create_artistInfo(curry,conny)
+        
+        
+    url = "https://travel-advisor.p.rapidapi.com/locations/v2/auto-complete"
+        
+        #fetch_and_store_data(curry,conny)
+    headers = {
+                "X-RapidAPI-Key": '8e633ad51amsh4f2574b7231ca74p16b3a2jsnf0c73dc94c1f',
+                "X-RapidAPI-Host": "travel-advisor.p.rapidapi.com"
+                }
+        # opening top 5 artist file restaurant implementation 
+        
+    city_nombres = []
+    with open('batched_artists_details.csv', mode='r', newline='') as file:
+        # Create a CSV reader object
+            artists = csv.DictReader(file)
+            for artist in artists: # Access data by column name
+            #Column headers
+            #Artist Name,Begin Area,Age,Deceased
+                artty_name = artist['Artist Name']
+                age = artist['Age']
+                
+                city_name = artist['Begin Area']
+                city_nombres.append(city_name)
+        # Iterate over each row in the CSV file
+        
+    print('checkpoint 1')       
+    print(city_nombres)      
+    print('checkpoint 2')  
+            
+    cities_list = []
+    for city in city_nombres: 
+            print('in loop')  
+            querystring = {"query":city,"lang":"en_US","units":"mi"} 
+            id = city_IDs(city,url,headers,querystring)   
+            cities_list.append(id[0])
+    city_info = {}
+    i = 0
+    while i < len(cities_list):
+          city_info[cities_list[i]] = city_nombres[i]
+          i+=1
+    
+    
+    print('out loop')  
+    print(cities_list)
+    print('checkpoint 3')        
+    url2 = "https://travel-advisor.p.rapidapi.com/restaurants/list"
+                
+            #restaurant_dict = restaurant_info(cityID_tup[0],url2,headers)
+            #print(restaurant_dict)
+            #add_cities(city_name,cityID_tup[0],curry,conny)
+    add_restaurants(url2,headers,cities_list,city_info,curry,conny)
+    print('checkpoint 4')   
+    curry.close()

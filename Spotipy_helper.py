@@ -12,8 +12,8 @@ if not os.path.exists(playlist_dir):
     os.makedirs(playlist_dir)
 
 # Spotify API credentials. These are required for accessing Spotify's Web API.
-client_id = 'a5e07be37285422b8f7353f4b9681df8' #'5f83f8e7bebf4896a37737a50d9ef4b5' <<abys
-client_secret = 'f2b24cf1550e46f3b15c51092d768920' #'c026360848cd451793486a8707591140' <<abys
+client_id = '5f83f8e7bebf4896a37737a50d9ef4b5' #'a5e07be37285422b8f7353f4b9681df8'  <<kev
+client_secret = 'c026360848cd451793486a8707591140'#'f2b24cf1550e46f3b15c51092d768920'  <<kev
 redirect_uri = 'http://localhost:5001/callback'
 scope = 'playlist-read-private,playlist-read-collaborative,user-top-read'
 

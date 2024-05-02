@@ -1,0 +1,49 @@
+from Calcs_plots import set_up_database, create_db_and_tables,insert_data_from_csv
+from restaurants_helper import city_IDs
+import sqlite3
+import csv
+
+
+if __name__ == '__main__':
+    
+    
+    
+    
+    curry, conny = set_up_database('popularity_central.db')
+    '''  
+    url = "https://travel-advisor.p.rapidapi.com/locations/v2/auto-complete"
+        
+        #fetch_and_store_data(curry,conny)
+    headers = {
+                "X-RapidAPI-Key": '8e633ad51amsh4f2574b7231ca74p16b3a2jsnf0c73dc94c1f',
+                "X-RapidAPI-Host": "travel-advisor.p.rapidapi.com"
+                }
+
+    city_nombres = []
+    with open('all_artists_data.csv', mode='r', newline='') as file:
+        # Create a CSV reader object
+            artists = csv.DictReader(file)
+            for artist in artists: # Access data by column name
+            #Column headers
+            #Artist Name,Begin Area,Age,Deceased
+                artty_name = artist['Artist Name']
+                age = artist['Age']
+                
+                city_name = artist['Begin Area']
+                city_nombres.append(city_name)
+        # Iterate over each row in the CSV file
+    cities_list = []
+    for city in city_nombres: 
+            print('in loop')  
+            querystring = {"query":city,"lang":"en_US","units":"mi"} 
+            id = city_IDs(city,url,headers,querystring)   
+            cities_list.append(id[0])   
+    print('checkpoint 1')       
+    print(city_nombres)  
+    '''
+    
+    #create_db_and_tables(conny)
+    #insert_data_from_csv('all_artists_data.csv',conny)
+
+
+    curry.close()

@@ -46,6 +46,16 @@ def get_artists_details(artist_names):
 
     return artist_details
 
+def write_artist_details_to_csv_main(artist_details, filename='all_artists_data.csv'):
+    with open(filename, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Artist Name', 'Begin Area', 'Age', 'Deceased'])  # Header
+        for artist, details in artist_details.items():
+            if isinstance(details, dict):
+                writer.writerow([artist, details['Begin Area'], details['Age'], details['Deceased']])
+            else:
+                writer.writerow([artist, details])  # Handle "Artist not found" case
+
 def write_artist_details_to_csv(artist_details, filename='batched_artists_details.csv'):
     with open(filename, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
@@ -65,6 +75,10 @@ def extract_batched_artists(artist_names):
 if __name__ == '__main__':
     with open('artists.txt', 'r', encoding='utf-8') as file:
         artist_names = [line.strip() for line in file if line.strip()]
+    
+    artist_details_main = get_artists_details(artist_names)
+    write_artist_details_to_csv_main(artist_details_main)
+
     batched_artists = extract_batched_artists(artist_names)
     artist_details = get_artists_details(batched_artists)
     write_artist_details_to_csv(artist_details)
