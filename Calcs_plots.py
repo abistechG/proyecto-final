@@ -77,10 +77,9 @@ def create_cities_table(cur,conn):
     '''
     initializes a city data table (for top five artist's city)
     '''
-   # cur.execute("DROP TABLE IF EXISTS cities")
     cur.execute('''CREATE TABLE IF NOT EXISTS cities (
         city_id INTEGER PRIMARY KEY,
-        name TEXT
+        name TEXT UNIQUE
     )
                 ''')
     conn.commit()
@@ -90,14 +89,15 @@ def create_artistInfo(cur,conn):
     initializes an artist data table from spotify playlists
     '''
     
-    cur.execute('''CREATE TABLE IF NOT EXISTS artists(
-    artist_id INTEGER,
-    age INTEGER,
-    city_id INTEGER,
-    playlist_id INTEGER
-    );
-
-                ''')
+    cur.execute(''' 
+        CREATE TABLE IF NOT EXISTS artists (
+            artist_id INTEGER PRIMARY KEY,
+            age INTEGER,
+            city_id INTEGER,
+            playlist_id INTEGER,
+            FOREIGN KEY(city_id) REFERENCES cities(city_id)
+        ); 
+    ''')
     conn.commit()
 
 def add_cities(city_name:str, city_id:int, cur,conn):
@@ -332,7 +332,21 @@ def fetch_and_store_data(cursor,conn):
     cursor.execute("UPDATE FetchState SET last_playlist_offset = last_playlist_offset + 5")
     conn.commit()
     print(f"Added {songs_added} songs to the database.")   
-    
+
+
+def create_db_and_tables(cursor,conn):
+    cursor.execute(''' 
+        CREATE TABLE IF NOT EXISTS artists (
+            artist_id INTEGER PRIMARY KEY,
+            age INTEGER,
+            city_id INTEGER,
+            playlist_id INTEGER,
+            FOREIGN KEY(city_id) REFERENCES cities(city_id)
+        ); 
+    ''')
+    conn.commit()
+
+ 
 ##############################################################
 #PLOTS   
 ##############################################################
@@ -482,21 +496,25 @@ if __name__ == '__main__':
             "X-RapidAPI-Host": "travel-advisor.p.rapidapi.com"
             }
     # opening top 5 artist file restaurant implementation 
-    
+    artists_Info = {}
     city_nombres = []
     with open('batched_artists_details.csv', mode='r', newline='') as file:
     # Create a CSV reader object
         artists = csv.DictReader(file)
         
     # Iterate over each row in the CSV file
+    
         for artist in artists: # Access data by column name
         #Column headers
         #Artist Name,Begin Area,Age,Deceased
             artty_name = artist['Artist Name']
             age = artist['Age']
+            if age <= 13:
+                age = 30
             
             city_name = artist['Begin Area']
             city_nombres.append(city_name)
+    
     print('checkpoint 1')       
     print(city_nombres)      
     print('checkpoint 2')  
