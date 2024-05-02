@@ -14,7 +14,7 @@ def cache_location(update: bool, json_cache: str, url:str, header:dict, querstri
         try:
             with open(json_cache, 'r') as file:
                 json_data = json.load(file)
-                print('file recieved')
+                #print('file recieved')
                 
         except:
             json_data = None

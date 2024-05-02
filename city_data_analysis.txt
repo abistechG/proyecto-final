@@ -1,0 +1,4 @@
+City, Average Rating, Average Review Count
+Fairfax, 4.15, 139.15
+Hermosillo, 4.29, 49.02
+Medellín, 4.76, 473.50

@@ -1,0 +1,77 @@
+City, Number of Artists
+Atlanta: 4 artists
+The Bronx: 3 artists
+Kingston: 3 artists
+Houston: 3 artists
+Unknown: 2 artists
+Toronto: 2 artists
+Sydney: 2 artists
+St. Louis: 2 artists
+San Juan: 2 artists
+Queens: 2 artists
+Nashville: 2 artists
+Louisville: 2 artists
+Zapopan: 1 artists
+West Reading: 1 artists
+Vanadzor: 1 artists
+United States: 1 artists
+Tarzana: 1 artists
+Stockton: 1 artists
+Staten Island: 1 artists
+Sonora: 1 artists
+Sneedville: 1 artists
+Secaucus: 1 artists
+Scotland: 1 artists
+Scarborough: 1 artists
+San Pedro: 1 artists
+Saint James: 1 artists
+Río Piedras: 1 artists
+Redditch: 1 artists
+Puerto Rico: 1 artists
+Poway: 1 artists
+Port Salerno: 1 artists
+Plaistow: 1 artists
+Paris: 1 artists
+Oxford: 1 artists
+Omaha: 1 artists
+Okinawa: 1 artists
+New Orleans: 1 artists
+Nantucket: 1 artists
+Murrieta: 1 artists
+Monessen: 1 artists
+Mobile: 1 artists
+Memphis: 1 artists
+Medellín: 1 artists
+McComb: 1 artists
+Los Angeles: 1 artists
+Long Branch: 1 artists
+London: 1 artists
+Lexington: 1 artists
+Lawrenceville: 1 artists
+Lawrence County: 1 artists
+Irvine: 1 artists
+Hounslow: 1 artists
+Hermosillo: 1 artists
+Harlem: 1 artists
+Halifax: 1 artists
+Golden: 1 artists
+Glasgow: 1 artists
+Frankfurt am Main: 1 artists
+Francisville: 1 artists
+Fairfax: 1 artists
+Dublin: 1 artists
+Dorset: 1 artists
+Detroit: 1 artists
+County Clare: 1 artists
+Connecticut: 1 artists
+Compton: 1 artists
+College Park: 1 artists
+Cleveland: 1 artists
+Charlotte: 1 artists
+Carson: 1 artists
+Calgary: 1 artists
+Bucks County: 1 artists
+Brussels: 1 artists
+Boca Raton: 1 artists
+Antioquia: 1 artists
+Alton: 1 artists

@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 
 
-def create_db_and_tables(conn):
+def create_db_and_tablesm(conn):
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS citys (
@@ -20,7 +20,7 @@ def create_db_and_tables(conn):
         );
     ''')
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS artists (
+        CREATE TABLE IF NOT EXISTS artistas (
             artist_id INTEGER PRIMARY KEY,
             artist_name TEXT,
             age INTEGER,
@@ -66,7 +66,7 @@ def insert_data_from_csv(csv_path, conn):
 
         # Insert artist data
         cursor.execute('''
-            INSERT INTO artists (artist_name, age, city_id)
+            INSERT INTO artistas (artist_name, age, city_id)
             VALUES (?, ?, ?)
         ''', (row['Artist Name'], row['Age'], city_id))
 
@@ -176,7 +176,7 @@ def add_cities(city_name, city_id, cur,conn):
         cur.execute('''
             INSERT INTO cities (city_id,name)
             VALUES (?, ?)
-        ''', (city_name, city_id))
+        ''', (city_id, city_name))
 
     conn.commit()
 
@@ -307,14 +307,17 @@ def add_restaurants(url:str, headers:str, city_ids: list, city_info:dict, cur, c
             with open("city_id_check.txt", "a") as fh:  
                 fh.write(f"{used_id}\n") 
             city_name =  city_info.get(used_id)
-            add_cities(city_name,used_id,cur,conn)
-
+            if used_id == city_ids[-1]:
+                print("You're done running this file.")
+            return city_name,used_id
             
         else: 
             f.write(str(min(new_count, len(restaurants))))
+            #print('i did this')
+            return None,None
           #  return 'next'
         
-        
+     
         
    # return 'stay'
 
@@ -498,6 +501,7 @@ def plot_city_data(cur):
     Plots a line graph showing average rating and average review count for each city and writes the data to a file.
     """
     city_data = fetch_city_data(cur)
+    print(city_data)
     if city_data:
         cities = [data[0] for data in city_data]
         avg_ratings = [data[1] for data in city_data]
@@ -544,27 +548,36 @@ def plot_average_artists(cursor):
     ''')
     result = cursor.fetchall()
 
-def count_artists_by_city(cursor,conn):
-
+def count_artists_by_city(cursor, conn):
+    """
+    Counts the number of artists associated with each city and prints and writes the results.
+    """
     # SQL query to count artists by city
     cursor.execute('''
         SELECT c.city_name, COUNT(a.artist_id) AS artist_count
-        FROM artists AS a
-        JOIN cities AS c ON a.city_id = c.city_id
+        FROM artistas AS a
+        JOIN citys AS c ON a.city_id = c.city_id
         GROUP BY c.city_name
         ORDER BY artist_count DESC
     ''')
 
     # Fetch all the results
     results = cursor.fetchall()
-    conn.close()
 
-    # Write the results to a file
-    with open('artists_by_city_count.txt', 'w') as file:
-        for city_name, count in results:
-            file.write(f"{city_name}: {count}\n")
+    # Check if results were found
+    if not results:
+        print("No artists found in any city.")
+        with open('artists_by_city_count.txt', 'w') as file:
+            file.write("No artists found in any city.\n")
+    else:
+         #write the results to a file
+        with open('artists_by_city_count.txt', 'w') as file:
+            #print("Number of artists per city:")
+            file.write("City, Number of Artists\n")
+            for city_name, count in results:
+                #print(f"{city_name}: {count} artists")
+                file.write(f"{city_name}: {count} artists\n")
 
-# Example usage
 
 
 
@@ -575,84 +588,12 @@ if __name__ == '__main__':
 
     
     curry, conny = set_up_database('popularity_central.db')
-    #Collect data of Spotify featured Playlist 
-    #spotified_tables(curry,conny)
-    #add_missing_columns(curry, conny)
-    #fetch_and_store_data(curry,conny)
-    #plot and output data 
-    #plot_average_song_duration(curry, 'average_song_duration.txt')
-    #plot_average_popularity(curry, 'average_popularity.txt')
-    """
-    create_restaurants_table(curry,conny)
-    create_cities_table(curry,conny)
-    create_artistInfo(curry,conny)
     
-    
-    url = "https://travel-advisor.p.rapidapi.com/locations/v2/auto-complete"
-    
-    #fetch_and_store_data(curry,conny)
-    headers = {
-            "X-RapidAPI-Key": '8e633ad51amsh4f2574b7231ca74p16b3a2jsnf0c73dc94c1f',
-            "X-RapidAPI-Host": "travel-advisor.p.rapidapi.com"
-            }
-    # opening top 5 artist file restaurant implementation 
-    artists_Info = {}
-    city_nombres = []
-    with open('batched_artists_details.csv', mode='r', newline='') as file:
-    # Create a CSV reader object
-        artists = csv.DictReader(file)
-        
-    # Iterate over each row in the CSV file
-    
-        for artist in artists: # Access data by column name
-        #Column headers
-        #Artist Name,Begin Area,Age,Deceased
-            artty_name = artist['Artist Name']
-            age = artist['Age']
-            if age <= 13:
-                age = 30
-            
-            city_name = artist['Begin Area']
-            city_nombres.append(city_name)
-    
-    print('checkpoint 1')       
-    print(city_nombres)      
-    print('checkpoint 2')  
-          
-    cities_list = []
-    for city in city_nombres: 
-        print('in loop')  
-        querystring = {"query":city,"lang":"en_US","units":"mi"} 
-        id = city_IDs(city,url,headers,querystring)   
-        cities_list.append(id[0])
-            #print(cityID_tup)
-    print('out loop')  
-    print(cities_list)
-    print('checkpoint 3')        
-    url2 = "https://travel-advisor.p.rapidapi.com/restaurants/list"
-            
-        #restaurant_dict = restaurant_info(cityID_tup[0],url2,headers)
-        #print(restaurant_dict)
-        #add_cities(city_name,cityID_tup[0],curry,conny)
-    add_restaurants(url2,headers,cities_list,curry,conny)
-    print('checkpoint 4')  
-
-    #create_db_and_tables(curry,conny)
-    #insert_data_from_csv('for_restaurants.csv',curry,conny)
-      
-
-
-            
-            
-   
     plot_average_song_duration(curry, 'average_song_duration.txt')
     plot_average_popularity(curry, 'average_popularity.txt')
-    
-    
-    
-    create_db_and_tables(conny)
-    insert_data_from_csv('all_artists_data.csv',conny)
-    """
+    plot_city_data(curry)
+    count_artists_by_city(curry,conny) #Artits Anlysis
+   
     curry.close()
    
     

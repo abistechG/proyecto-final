@@ -34,13 +34,13 @@ if __name__ == '__main__':
                 city_nombres.append(city_name)
         # Iterate over each row in the CSV file
         
-    print('checkpoint 1')       
-    print(city_nombres)      
-    print('checkpoint 2')  
+   # print('checkpoint 1')       
+    #print(city_nombres)      
+    #print('checkpoint 2')  
             
     cities_list = []
     for city in city_nombres: 
-            print('in loop')  
+            #print('in loop')  
             querystring = {"query":city,"lang":"en_US","units":"mi"} 
             id = city_IDs(city,url,headers,querystring)   
             cities_list.append(id[0])
@@ -51,14 +51,17 @@ if __name__ == '__main__':
           i+=1
     
     
-    print('out loop')  
-    print(cities_list)
-    print('checkpoint 3')        
+    #print('out loop')  
+    #print(city_info)
+    #print('checkpoint 3')        
     url2 = "https://travel-advisor.p.rapidapi.com/restaurants/list"
                 
             #restaurant_dict = restaurant_info(cityID_tup[0],url2,headers)
             #print(restaurant_dict)
             #add_cities(city_name,cityID_tup[0],curry,conny)
-    add_restaurants(url2,headers,cities_list,city_info,curry,conny)
-    print('checkpoint 4')   
+    cide_name, cide_id = add_restaurants(url2,headers,cities_list,city_info,curry,conny)
+    #print('checkpoint 4')   
+    if cide_name is not None and cide_id is not None:
+          add_cities(cide_name,cide_id,curry,conny)
+
     curry.close()
